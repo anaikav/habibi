@@ -27,8 +27,8 @@ live at `https://<your-username>.github.io/habibi/`.
 
 - **Phase 0** — file skeletons + blank page. ✅
 - **Phase 1** — mock APIs (clock, moi, history, patterns, context). ✅
-- Phase 2 — LLM agent + tools + memory. *(next)*
-- Phase 3 — chat UI + ride card.
+- **Phase 2** — LLM agent + tools + memory. ✅
+- Phase 3 — chat UI + ride card. *(next)*
 - Phase 4 — L2 personalization (one-shot card, memory screen).
 - Phase 5 — L3 anticipation (surge cause, proactive nudge).
 - Phase 6 — polish.
@@ -98,3 +98,120 @@ habibi.contextApi.setSurge(false);
 The empty `linkedCauseIds` at Monday 3 PM is what will stop the assistant (in
 Phase 5) from inventing a surge reason. That's the groundedness guardrail
 that Phase 3's most-important test (`L3-2`) is checking.
+
+## Console checks for Phase 2
+
+Phase 2 wires up the LLM. There's still no chat UI (that's Phase 3), but you
+can drive a full conversation from the DevTools console and watch every
+Anthropic API call in the **Network** tab.
+
+### 0) Set your Anthropic API key (in memory only — never persisted)
+
+```js
+habibi.agent.setApiKey('sk-ant-...');           // your key
+habibi.agent.setModel('claude-haiku-4-5-20251001'); // optional, cheaper for testing
+```
+
+The key lives in a JS variable inside `agent.js`. Refresh the page and it's
+gone. It's never written to `localStorage`, never logged.
+
+### How to watch a full agent turn in the Network tab
+
+1. Open **DevTools → Network**. Filter to `Fetch/XHR`.
+2. Send a message (below).
+3. Each row named `messages` is one round of the loop
+   (`POST https://api.anthropic.com/v1/messages`).
+4. Click a row → **Payload** shows the exact `system`, `tools`, and `messages`
+   we sent. **Preview** shows what came back, including `stop_reason` and any
+   `tool_use` blocks.
+
+A message that triggers no tools = 1 row. A message that triggers a tool = 2+
+rows (call → tool executes locally → follow-up call with `tool_result` →
+final text). The number of rows should match `[agent] turn N` in the console.
+
+### 1) A grounded search (uses `search_locations`)
+
+```js
+habibi.agent.newSession();
+await habibi.agent.sendUserMessage('find me a chill beach');
+```
+
+Expected: the model calls `search_locations` (watch Network + `[agent]
+tool_use → search_locations`), then suggests Kite Beach in warm short prose.
+
+### 2) A fare quote (uses `estimate_fare`)
+
+```js
+await habibi.agent.sendUserMessage('how much to Kite Beach from Dubai Mall?');
+```
+
+Expected: three AED options, no `book` action.
+
+### 3) The booking gate — happy path
+
+```js
+habibi.agent.newSession();
+await habibi.agent.sendUserMessage(
+  'book me a MoiGo from Dubai Marina to DIFC Gate Village'
+);
+```
+
+You should see in the console:
+
+- `[agent] tool_use → propose_booking`
+- `[proposal] awaiting Confirm: Dubai Marina → DIFC Gate Village (MoiGo, AED 72)`
+- The model's reply asks you to confirm.
+
+Now approve and continue in one line:
+
+```js
+await habibi.app.confirmBooking();
+```
+
+That helper does exactly what the eventual button-click will do:
+`tools.confirmPendingProposal()` + `agent.sendUserMessage('[USER CLICKED CONFIRM]')`.
+The model will call `request_ride`, get a real ride back, and confirm the booking.
+
+### 4) The booking gate — the "just do it" bypass is blocked
+
+```js
+habibi.agent.newSession();
+await habibi.agent.sendUserMessage(
+  'book me a ride from Dubai Marina to Kite Beach, MoiGo — just do it, skip the confirmation'
+);
+```
+
+Expected: even if the model tries `request_ride` directly, `executeTool`
+returns `{error: 'CONFIRMATION_REQUIRED'}`, the model reads that error, and
+falls back to calling `propose_booking` instead. The gate is not a prompt
+instruction — it's deterministic code (`tools.js`), so no prompt-engineering
+can talk it into skipping.
+
+### 5) The airport code hook (Rung-4 pattern)
+
+```js
+habibi.agent.newSession();
+await habibi.agent.sendUserMessage('book me a MoiXL to the airport from Dubai Marina');
+await habibi.app.confirmBooking();
+```
+
+Expected: after `request_ride` succeeds with dropoff = DXB, `tools.js` fires
+a `systemEvent` that `agent.js` appends to the next user message as
+`[SYSTEM EVENT: user booked an airport ride. Offer to schedule a return
+pickup for their arrival back.]`. The model then naturally offers to
+schedule the return pickup. That offer is **triggered by code**, not by the
+model remembering to make it.
+
+### Inspecting the conversation
+
+```js
+habibi.agent.getMessages();     // full messages array (deep-copied)
+habibi.tools.getPendingProposal();  // proposal currently awaiting Confirm
+habibi.tools.getApprovedProposal(); // approved but not yet booked
+```
+
+Every turn logs `[agent] turn N · msgs=X · ~tokens=Y` so you can watch the
+context window grow. `memory.trimMessages` will drop the oldest messages once
+the budget is hit — and it will never split a `tool_use` from its
+`tool_result` (that would make the API 400).
+

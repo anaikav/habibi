@@ -16,13 +16,19 @@
       <p class="muted small">Open the DevTools console — everything is under <code>habibi.*</code>. See README for console checks.</p>
     </main>
 
-    <!-- Load order matters: mocks first, patternMiner uses history data, and
-         app.js is the top-level bootstrap. Plain scripts (no bundler). -->
+    <!-- Load order matters. Plain scripts (no bundler):
+         1) mocks first (they publish to window.habibi.*)
+         2) memory + tools (agent depends on both)
+         3) agent (needs tools' schemas)
+         4) app.js — bootstrap, always last. -->
     <script src="clock.js"></script>
     <script src="contextApi.js"></script>
     <script src="historyApi.js"></script>
     <script src="moiApi.js"></script>
     <script src="patternMiner.js"></script>
+    <script src="memory.js"></script>
+    <script src="tools.js"></script>
+    <script src="agent.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
