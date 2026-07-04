@@ -1,2 +1,2 @@
 # habibi
-An AI chat assitant
+An AI chat assistant
