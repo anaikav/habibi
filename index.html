@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Habibi — Dubai concierge</title>
     <link rel="stylesheet" href="style.css" />
-    <!-- Tiny inline SVG favicon so we don't 404 on load. -->
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23b3541e'/%3E%3Ctext x='50%25' y='58%25' font-size='36' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3EH%3C/text%3E%3C/svg%3E"
@@ -13,44 +12,83 @@
   </head>
   <body>
     <div id="app">
-      <!-- Top bar: title + settings gear -->
+      <!-- Demo control panel (spec §2). The whole thing is the test harness
+           for L1/L2/L3 flows — not part of the "real" product chrome. -->
+      <div id="demo-panel" class="demo-panel" aria-label="Demo controls">
+        <button id="demo-toggle" class="demo-toggle" type="button" aria-expanded="true">
+          <span class="demo-toggle-caret">▾</span>
+          <span>Demo controls</span>
+          <span id="demo-summary" class="demo-summary muted"></span>
+        </button>
+        <div id="demo-body" class="demo-body">
+          <div class="demo-row">
+            <div class="demo-label">Clock</div>
+            <div class="demo-controls">
+              <button class="preset-btn" data-preset="mon_735am" type="button">Mon 7:35 AM</button>
+              <button class="preset-btn" data-preset="mon_830am" type="button">Mon 8:30 AM</button>
+              <button class="preset-btn" data-preset="fri_600pm" type="button">Fri 6:00 PM</button>
+              <button class="preset-btn" data-preset="sat_730pm" type="button">Sat 7:30 PM</button>
+              <input id="clock-input" class="preset-input" type="datetime-local" />
+            </div>
+          </div>
+          <div class="demo-row">
+            <div class="demo-label">Surge</div>
+            <div class="demo-controls">
+              <div class="seg" role="tablist" data-seg="surge">
+                <button class="seg-btn is-active" data-val="off" type="button">Off</button>
+                <button class="seg-btn" data-val="on" type="button">On</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-row">
+            <div class="demo-label">Weather</div>
+            <div class="demo-controls">
+              <div class="seg" role="tablist" data-seg="rain">
+                <button class="seg-btn is-active" data-val="off" type="button">Clear</button>
+                <button class="seg-btn" data-val="on" type="button">Rain forecast</button>
+              </div>
+            </div>
+          </div>
+          <div class="demo-row">
+            <div class="demo-label"></div>
+            <div class="demo-controls">
+              <button id="reset-btn" class="btn-secondary" type="button">Reset demo data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <header class="topbar">
         <div class="brand">
           <span class="brand-logo" aria-hidden="true">H</span>
           <span class="brand-name">Habibi</span>
           <span class="brand-tag">Dubai concierge</span>
         </div>
-        <button
-          id="settings-btn"
-          class="icon-btn"
-          type="button"
-          aria-label="Settings"
-          title="Settings"
-        >⚙</button>
+        <div class="header-actions">
+          <button id="memory-btn" class="icon-btn" type="button" aria-label="Memory" title="Memory">🧠</button>
+          <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+        </div>
       </header>
 
-      <!-- Chat area: scrollable message list. -->
       <main id="chat" class="chat" aria-live="polite">
-        <div id="messages" class="messages">
-          <!-- Rendered by app.js -->
-        </div>
+        <div id="messages" class="messages"></div>
       </main>
 
-      <!-- Composer: textarea + send button. -->
+      <!-- Pinned cards above the composer (one-shot "Your usual?" or the
+           Phase 5 rain nudge). Rendered by app.js. -->
+      <div id="pinned" class="pinned-cards" aria-live="polite"></div>
+
       <footer class="composer">
         <textarea
-          id="input"
-          class="input"
-          rows="1"
+          id="input" class="input" rows="1"
           placeholder="Message Habibi…"
-          autocomplete="off"
-          autocapitalize="sentences"
+          autocomplete="off" autocapitalize="sentences"
         ></textarea>
         <button id="send" class="send-btn" type="button" aria-label="Send">→</button>
       </footer>
     </div>
 
-    <!-- Settings modal (hidden by default) -->
+    <!-- Settings modal -->
     <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Settings">
       <div class="modal-content">
         <div class="modal-head">
@@ -60,14 +98,8 @@
 
         <label class="field">
           <span class="field-label">Anthropic API key</span>
-          <input
-            id="api-key-input"
-            class="field-input"
-            type="password"
-            placeholder="sk-ant-api03-…"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <input id="api-key-input" class="field-input" type="password"
+            placeholder="sk-ant-api03-…" autocomplete="off" spellcheck="false" />
           <small class="muted">In memory only. Refresh clears it. Never sent anywhere but api.anthropic.com.</small>
         </label>
 
@@ -82,6 +114,28 @@
         <div class="modal-actions">
           <button id="save-settings" class="btn-primary" type="button">Save</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Memory modal (spec §6 — the trust/transparency surface) -->
+    <div id="memory-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Memory">
+      <div class="modal-content modal-wide">
+        <div class="modal-head">
+          <h2>Memory</h2>
+          <button id="close-memory" class="icon-btn" type="button" aria-label="Close">✕</button>
+        </div>
+
+        <section class="mem-section">
+          <h3 class="mem-h3">Mined patterns</h3>
+          <p class="muted small">Inferred from your ride history. Delete anything that isn't really you.</p>
+          <div id="memory-patterns" class="mem-list"></div>
+        </section>
+
+        <section class="mem-section">
+          <h3 class="mem-h3">Stated preferences</h3>
+          <p class="muted small">Things you've told Habibi directly. Refresh clears them.</p>
+          <div id="memory-prefs" class="mem-list"></div>
+        </section>
       </div>
     </div>
 

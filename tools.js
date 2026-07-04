@@ -177,6 +177,22 @@
   }
   function clearProposals() { pendingProposal = null; approvedProposal = null; }
 
+  // For the L2 one-shot "Your usual?" card (spec §6). The card IS the
+  // confirmation — a specific tap on displayed fare + route — so we don't
+  // want to fire the proposal event and render a second Proposal card in
+  // the chat. This directly sets the approved slot; the caller then invokes
+  // executeTool('request_ride', ...) as usual, keeping ONE code path.
+  function approveProposalDirect(p) {
+    pendingProposal = null;
+    approvedProposal = {
+      pickup: p.pickup,
+      dropoff: p.dropoff,
+      type: p.type,
+      fareAED: p.fareAED,
+      at: Date.now(),
+    };
+  }
+
   // ----- Helpers ------------------------------------------------------
 
   function makeIdempotencyKey() {
@@ -324,6 +340,7 @@
     getPendingProposal,
     getApprovedProposal,
     confirmPendingProposal,
+    approveProposalDirect,
     clearProposals,
     onProposal:   (fn) => on('proposal', fn),
     onChip:       (fn) => on('chip', fn),

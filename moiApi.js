@@ -268,12 +268,20 @@
     return { rideId, status: 'cancelled', cancellationFeeAED: feeAED };
   }
 
+  // Wipe every ride we've booked and every idempotency mapping. The demo
+  // panel's Reset button calls this so the next booking starts from clean.
+  function resetRides() {
+    rides.clear();
+    byIdempotency.clear();
+  }
+
   window.habibi = window.habibi || {};
   window.habibi.moiApi = {
     estimateFare,
     requestRide,
     getRideStatus,
     cancelRide,
+    resetRides,
     // exposed for debugging from the console
     _distanceKm: distanceKm,
   };

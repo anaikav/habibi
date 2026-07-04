@@ -281,7 +281,203 @@ html, body {
 }
 .field-input:focus { border-color: var(--accent); outline: none; background: white; }
 .muted { color: var(--muted); font-size: 12px; }
+.small { font-size: 12px; }
 
 .modal-actions {
   display: flex; justify-content: flex-end; margin-top: 4px;
 }
+
+.modal-wide { max-width: 460px; }
+
+/* ============ Demo control panel (spec §2) ==============================
+   Visually distinct from the app chrome — this is the test harness for
+   the L1/L2/L3 flows, not something a real user would see. */
+
+.demo-panel {
+  background: #f2ede3;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.demo-toggle {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+.demo-toggle:hover { background: rgba(0,0,0,0.03); }
+.demo-toggle-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 11px;
+  color: var(--muted);
+}
+.demo-toggle[aria-expanded="false"] .demo-toggle-caret { transform: rotate(-90deg); }
+.demo-summary { font-size: 12px; margin-left: auto; }
+
+.demo-body {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 6px 14px 12px;
+}
+.demo-panel[data-collapsed="true"] .demo-body { display: none; }
+
+.demo-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.demo-label {
+  width: 66px; flex-shrink: 0;
+  font-weight: 600; font-size: 12px;
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.demo-controls {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+
+.preset-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface); color: var(--ink);
+  font-size: 12px; font: inherit;
+  cursor: pointer;
+}
+.preset-btn:hover { border-color: var(--accent); }
+.preset-btn.is-active {
+  background: var(--accent); color: white; border-color: var(--accent);
+}
+.preset-input {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit; font-size: 12px;
+  background: var(--surface);
+}
+
+/* Segmented Off/On toggle */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.seg-btn {
+  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  font: inherit; font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.seg-btn:hover { background: rgba(0,0,0,0.03); }
+.seg-btn.is-active {
+  background: var(--accent); color: white;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn.is-active + .seg-btn { border-left-color: var(--accent); }
+.seg-btn:has(+ .seg-btn.is-active) { border-right: 1px solid var(--accent); }
+
+.btn-secondary {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 12px;
+  cursor: pointer;
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.header-actions { display: flex; gap: 4px; }
+
+/* ============ Pinned cards (one-shot, later rain nudge) ================
+   Live between the chat scroll area and the composer. Above the composer
+   so they're always visible; the chat still scrolls below. */
+
+.pinned-cards {
+  padding: 0 12px;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.pinned-cards:empty { padding: 0; }
+
+.oneshot-card {
+  display: flex; align-items: center; gap: 12px;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff8ea;
+  border: 1px solid #e6cf95;
+  box-shadow: var(--shadow-sm);
+}
+.oneshot-icon { font-size: 20px; flex-shrink: 0; }
+.oneshot-body { flex: 1; min-width: 0; }
+.oneshot-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.oneshot-meta  { color: var(--muted); font-size: 12px; }
+.oneshot-actions {
+  display: flex; gap: 6px; flex-shrink: 0;
+}
+.oneshot-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+.oneshot-btn--primary { background: var(--accent); color: white; }
+.oneshot-btn--primary:hover { background: var(--accent-2); }
+.oneshot-btn--secondary {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line);
+}
+.oneshot-btn--secondary:hover { color: var(--ink); border-color: var(--muted); }
+.oneshot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* When we swap the card to an error / empty state, keep the shape stable. */
+.oneshot-card--error {
+  background: #fbe9e9;
+  border-color: #ecc0c0;
+}
+
+/* ============ Memory screen =============================================
+   Modal listing patterns + preferences with delete buttons. */
+
+.mem-section { margin-bottom: 18px; }
+.mem-h3 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); font-weight: 700;
+  margin: 0 0 4px;
+}
+.mem-list {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 8px;
+}
+.mem-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.mem-item-body { flex: 1; min-width: 0; }
+.mem-item-title { font-weight: 600; font-size: 14px; }
+.mem-item-meta  { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.mem-item-empty {
+  padding: 10px 0;
+  color: var(--muted); font-size: 13px; font-style: italic;
+}
+.mem-delete {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--muted);
+  font: inherit; font-size: 12px;
+  cursor: pointer;
+}
+.mem-delete:hover { color: var(--danger); border-color: var(--danger); }

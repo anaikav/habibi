@@ -29,7 +29,8 @@ live at `https://<your-username>.github.io/habibi/`.
 - **Phase 1** — mock APIs (clock, moi, history, patterns, context). ✅
 - **Phase 2** — LLM agent + tools + memory. ✅
 - **Phase 3** — chat UI, chips, settings, ride card. ✅
-- Phase 4 — L2 personalization (one-shot card, memory screen). *(next)*
+- **Phase 4** — demo panel, one-shot card, memory screen. ✅
+- Phase 5 — L3 anticipation (surge cause, proactive nudge). *(next)*
 - Phase 5 — L3 anticipation (surge cause, proactive nudge).
 - Phase 6 — polish.
 
@@ -98,6 +99,40 @@ habibi.contextApi.setSurge(false);
 The empty `linkedCauseIds` at Monday 3 PM is what will stop the assistant (in
 Phase 5) from inventing a surge reason. That's the groundedness guardrail
 that Phase 3's most-important test (`L3-2`) is checking.
+
+## Phase 4 acceptance tests (spec §9 — L2)
+
+Phase 4 adds the demo control panel at the top of the page (clock presets +
+surge + rain + Reset), the one-shot "Your usual?" card pinned above the
+composer, and a Memory screen (🧠 icon in the header).
+
+- **L2-1** — Click **Mon 8:30 AM**. Expected: a yellow one-shot card appears
+  above the composer: *"Your usual to DIFC Gate Village? MoiGo · ~AED 72"*
+  with `[Book now]` and `[Not today]`. Click **Book now** → a Ride booked
+  card appears in the chat and the one-shot disappears. Flip **Surge → On**
+  and the one-shot's fare rises to `~AED 115` — that's "live fare" per spec.
+- **L2-2** — Reset (or refresh). Click **Mon 8:30 AM**, then **[Not today]**.
+  Move the clock somewhere else, come back — the card reappears. Dismiss
+  again → this time `[Not today]` counts as the 2nd dismissal and the card
+  is suppressed for the whole session. Confirm by clicking Mon 8:30 AM
+  once more — nothing appears. Only a page refresh (or **Reset demo data**)
+  brings it back.
+- **L2-3** — Open 🧠 **Memory**. Expected: one pattern *"Dubai Marina →
+  DIFC Gate Village · MoiGo · weekdays · 08:15–08:55 · 9 of last 14 rides ·
+  confidence 0.82"*. Click **Delete**. Close the modal. Click Mon 8:30 AM
+  → the one-shot card does NOT appear. Deleting a pattern really removed
+  it (it's on the ignore-list; the miner respects it).
+- **L2-4** — Set your API key if you haven't. Say `I prefer quiet rides`.
+  Expected: `🧠 update_preference → saved` chip; open 🧠 Memory and you'll
+  see `ride_style: quiet`. Then say `book me a MoiGo to DIFC Gate Village
+  from Dubai Marina`, Confirm. The assistant's reply mentions "quiet" or
+  a quiet-ish acknowledgement **exactly once**, unprompted, without
+  reciting your profile like a list. That's the personalization rule
+  from spec §5 working.
+
+**Reset demo data** wipes seeded history back to fresh, clears all rides,
+prefs, ignored patterns, and the chat, and resets the LLM conversation. Use
+it between tests to get a clean slate.
 
 ## Phase 3 acceptance tests (spec §9 — L1)
 
