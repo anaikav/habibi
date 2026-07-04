@@ -227,12 +227,45 @@
     return await runAgentLoop();
   }
 
+  // ----- One-shot text composition (used by the L3 rain nudge card) ---
+  //
+  // A single API call with no tools, no conversation history. Used to have
+  // the model write a short piece of UI copy from a fixed instruction. Does
+  // NOT touch the main `messages` array — that would pollute the chat.
+
+  async function composeText(instruction, opts) {
+    if (!apiKey) throw new Error('No Anthropic API key set.');
+    const maxTokens = (opts && opts.maxTokens) || 200;
+    const body = {
+      model,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: instruction }],
+    };
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('Anthropic API ' + res.status + ': ' + err);
+    }
+    const json = await res.json();
+    return extractText(json.content);
+  }
+
   window.habibi = window.habibi || {};
   window.habibi.agent = {
     setApiKey, hasApiKey,
     setModel, getModel,
     newSession, getMessages,
     sendUserMessage,
+    composeText,
     onAssistantText: (fn) => on('assistantText', fn),
     MODELS,
   };

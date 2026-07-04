@@ -444,6 +444,20 @@ html, body {
   border-color: #ecc0c0;
 }
 
+/* Rain nudge variant — cool blue to differentiate from the warm one-shot. */
+.oneshot-card--nudge {
+  background: #eaf3fb;
+  border-color: #a9c9e6;
+}
+
+/* Rain reason line appended INSIDE the one-shot card when the collision
+   rule applies (in-window + rain). Visually a subtle blue accent. */
+.oneshot-rain {
+  color: #3d6a8f;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
 /* ============ Memory screen =============================================
    Modal listing patterns + preferences with delete buttons. */
 

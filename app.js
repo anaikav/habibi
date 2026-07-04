@@ -290,11 +290,25 @@
   let oneshotRenderToken = 0;      // guards against stale async renders
   let currentOneshotEl = null;
 
+  // Phase 5: rain-nudge state.
+  // Rule: max 1 nudge per session (spec §6). Set true as soon as we render
+  // one, and [Fewer like this] also flips it. Reset button clears both flags.
+  let nudgeSessionSuppressed = false;
+  let nudgeRenderInProgress  = false;
+  let currentNudgeEl = null;
+
   function removeOneshotCard() {
     if (currentOneshotEl && currentOneshotEl.parentNode) {
       currentOneshotEl.parentNode.removeChild(currentOneshotEl);
     }
     currentOneshotEl = null;
+  }
+
+  function removeNudgeCard() {
+    if (currentNudgeEl && currentNudgeEl.parentNode) {
+      currentNudgeEl.parentNode.removeChild(currentNudgeEl);
+    }
+    currentNudgeEl = null;
   }
 
   function isWeekday(dt) {
@@ -313,21 +327,55 @@
     );
   }
 
-  async function reevaluateTriggers() {
-    if (oneshotSessionSuppressed) return removeOneshotCard();
-    if (hasActiveRide())          return removeOneshotCard();
-    const simTime = window.habibi.clock.getSimTime();
-    if (!isWeekday(simTime))      return removeOneshotCard();
-
-    const patterns = window.habibi.patterns || [];
-    const match = findMatchingPattern(simTime, patterns);
-    if (!match)                    return removeOneshotCard();
-
-    // Always re-render so the fare reflects the current surge state.
-    await renderOneshotCard(match);
+  // Nudge zone (spec §6): 90 to 20 minutes BEFORE the pattern's window start.
+  function findNudgePattern(simTime, patterns) {
+    const now = simMinutes(simTime);
+    return patterns.find(
+      (p) => now >= (p.windowStartMin - 90) && now <= (p.windowStartMin - 20)
+    );
   }
 
-  async function renderOneshotCard(pattern) {
+  // The one trigger evaluator to rule them all. Handles the collision rule
+  // (spec §6): inside the pattern window we show ONLY the one-shot, but with
+  // a rain reason appended when a rain forecast is on. Outside the window
+  // but in the nudge zone with rain on, we show ONLY the rain nudge.
+  async function reevaluateTriggers() {
+    const simTime = window.habibi.clock.getSimTime();
+    if (hasActiveRide() || !isWeekday(simTime)) {
+      removeOneshotCard();
+      removeNudgeCard();
+      return;
+    }
+
+    const patterns = window.habibi.patterns || [];
+    const rainOn = window.habibi.contextApi.isRainForecast();
+    const inWindow  = findMatchingPattern(simTime, patterns);
+    const inNudge   = findNudgePattern(simTime, patterns);
+
+    if (inWindow) {
+      // Collision winner: one-shot, optionally with rain reason.
+      removeNudgeCard();
+      if (oneshotSessionSuppressed) {
+        removeOneshotCard();
+        return;
+      }
+      const rainNote = rainOn ? '☔ rain expected — consider leaving early' : null;
+      await renderOneshotCard(inWindow, rainNote);
+      return;
+    }
+
+    if (inNudge && rainOn && !nudgeSessionSuppressed) {
+      removeOneshotCard();
+      await renderNudgeCard(inNudge);
+      return;
+    }
+
+    // Neither trigger applies.
+    removeOneshotCard();
+    removeNudgeCard();
+  }
+
+  async function renderOneshotCard(pattern, rainNote) {
     const myToken = ++oneshotRenderToken;
 
     // Live fare (accounts for surge).
@@ -337,15 +385,13 @@
     const option = est.options.find((o) => o.type === pattern.rideType) || est.options[0];
     const fareAED = option ? option.fareAED : null;
 
-    // Only rebuild if data actually changed — avoid DOM churn.
-    if (currentOneshotEl && currentOneshotEl.dataset.key ===
-        `${pattern.id}|${pattern.rideType}|${fareAED}`) {
-      return;
-    }
+    // Include rainNote in the key so re-renders happen when it appears or clears.
+    const key = `${pattern.id}|${pattern.rideType}|${fareAED}|${rainNote || ''}`;
+    if (currentOneshotEl && currentOneshotEl.dataset.key === key) return;
     removeOneshotCard();
 
     const card = makeEl('div', 'oneshot-card');
-    card.dataset.key = `${pattern.id}|${pattern.rideType}|${fareAED}`;
+    card.dataset.key = key;
     card.appendChild(makeEl('div', 'oneshot-icon', '💡'));
 
     const body = makeEl('div', 'oneshot-body');
@@ -353,6 +399,9 @@
       `Your usual to ${pattern.dropoff}?`));
     body.appendChild(makeEl('div', 'oneshot-meta',
       `${pattern.rideType} · ~AED ${fareAED}`));
+    if (rainNote) {
+      body.appendChild(makeEl('div', 'oneshot-meta oneshot-rain', rainNote));
+    }
     card.appendChild(body);
 
     const actions = makeEl('div', 'oneshot-actions');
@@ -430,6 +479,132 @@
       console.log('[app] one-shot suppressed for this session (2 dismissals)');
     }
     removeOneshotCard();
+  }
+
+  // ============ Phase 5: rain nudge card =============================
+  //
+  // Trigger already checked in reevaluateTriggers. This function renders
+  // the card: attempt LLM composition of the copy, fall back to a static
+  // template on any failure. Suppress future nudges immediately — spec's
+  // "max 1 nudge per session" is enforced before any user action.
+
+  const RAIN_WINDOW_TEXT = '08:00–10:00';
+
+  function fmtMinutes(m) {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+  }
+
+  function staticNudgeText(pattern) {
+    const usual = fmtMinutes(pattern.windowStartMin + 20); // ~median
+    const early = fmtMinutes(pattern.windowStartMin - 5);  // 10 min earlier than usual start
+    return `Heads up — rain forecast ${RAIN_WINDOW_TEXT} today. Want to book your usual ${pattern.rideType} to ${pattern.dropoff} around ${early} instead of ${usual}, to stay ahead of it? ☔`;
+  }
+
+  async function renderNudgeCard(pattern) {
+    if (nudgeRenderInProgress || currentNudgeEl) return;
+    nudgeRenderInProgress = true;
+
+    // Compose the copy (LLM if available, static otherwise).
+    let text = staticNudgeText(pattern);
+    if (window.habibi.agent.hasApiKey()) {
+      const usualTime = fmtMinutes(pattern.windowStartMin + 20);
+      const instruction =
+        `You are Habibi, a warm concise Dubai concierge. ` +
+        `Compose a friendly 2-sentence nudge (max one emoji, no lists). ` +
+        `Context: rain forecast ${RAIN_WINDOW_TEXT} today. ` +
+        `The user's usual weekday ride is ${pattern.pickup} → ${pattern.dropoff} ` +
+        `(${pattern.rideType}) around ${usualTime}. ` +
+        `Suggest booking about 10 minutes early so they beat the weather. ` +
+        `Include the rain as the reason.`;
+      try {
+        const composed = await window.habibi.agent.composeText(instruction, { maxTokens: 180 });
+        if (composed && composed.trim()) text = composed.trim();
+      } catch (e) {
+        console.warn('[app] nudge compose failed, using static fallback:', e.message);
+      }
+    }
+
+    // "Max 1 nudge per session" — flip the flag now, before user acts.
+    nudgeSessionSuppressed = true;
+    nudgeRenderInProgress  = false;
+
+    const card = makeEl('div', 'oneshot-card oneshot-card--nudge');
+    card.appendChild(makeEl('div', 'oneshot-icon', '☔'));
+
+    const body = makeEl('div', 'oneshot-body');
+    body.appendChild(makeEl('div', 'oneshot-title', 'Rain ahead'));
+    body.appendChild(makeEl('div', 'oneshot-meta', text));
+    card.appendChild(body);
+
+    const actions = makeEl('div', 'oneshot-actions');
+    const scheduleBtn = makeEl('button', 'oneshot-btn oneshot-btn--primary', 'Schedule it');
+    scheduleBtn.type = 'button';
+    const fewerBtn = makeEl('button', 'oneshot-btn oneshot-btn--secondary', 'Fewer like this');
+    fewerBtn.type = 'button';
+
+    scheduleBtn.addEventListener('click', () => {
+      scheduleBtn.disabled = true;
+      fewerBtn.disabled = true;
+      scheduleBtn.textContent = 'Booking…';
+      bookNudge(pattern, card, scheduleBtn, fewerBtn);
+    });
+    fewerBtn.addEventListener('click', () => {
+      // Already suppressed above, but leave the explicit intent clear.
+      nudgeSessionSuppressed = true;
+      removeNudgeCard();
+    });
+
+    actions.appendChild(scheduleBtn);
+    actions.appendChild(fewerBtn);
+    card.appendChild(actions);
+
+    pinnedEl.appendChild(card);
+    currentNudgeEl = card;
+  }
+
+  async function bookNudge(pattern, cardEl, scheduleBtn, fewerBtn) {
+    // Same code path as one-shot [Book now] and chat [Confirm booking]:
+    // approve directly, then executeTool('request_ride'). One code path.
+    const est = await window.habibi.moiApi.estimateFare(pattern.pickup, pattern.dropoff);
+    const option = est.options.find((o) => o.type === pattern.rideType) || est.options[0];
+    const fareAED = option ? option.fareAED : null;
+
+    window.habibi.tools.approveProposalDirect({
+      pickup:  pattern.pickup,
+      dropoff: pattern.dropoff,
+      type:    pattern.rideType,
+      fareAED,
+    });
+    const result = await window.habibi.tools.executeTool('request_ride', {
+      pickup:  pattern.pickup,
+      dropoff: pattern.dropoff,
+      type:    pattern.rideType,
+    });
+
+    if (result && result.error === 'NO_DRIVERS_AVAILABLE') {
+      cardEl.classList.add('oneshot-card--error');
+      const body = cardEl.querySelector('.oneshot-body');
+      body.replaceChildren(
+        makeEl('div', 'oneshot-title', 'No drivers right now'),
+        makeEl('div', 'oneshot-meta',  'Try again in a minute.'),
+      );
+      scheduleBtn.disabled = true;
+      scheduleBtn.textContent = 'Schedule it';
+      fewerBtn.disabled = false;
+      return;
+    }
+    if (result && result.rideId) {
+      // Ride card is rendered via the onChip subscription. Remove this card.
+      removeNudgeCard();
+      reevaluateTriggers();
+      return;
+    }
+    console.warn('[app] nudge book unexpected result:', result);
+    cardEl.classList.add('oneshot-card--error');
+    scheduleBtn.disabled = false;
+    fewerBtn.disabled = false;
   }
 
   // ============ Phase 4: memory screen ===============================
@@ -588,10 +763,13 @@
     window.habibi.historyApi.resetAll();
     window.habibi.tools.clearProposals();
 
-    // Reset session flags for the one-shot fatigue rule.
+    // Reset session flags for the one-shot fatigue rule + the nudge rule.
     oneshotDismissedCount = 0;
     oneshotSessionSuppressed = false;
+    nudgeSessionSuppressed = false;
+    nudgeRenderInProgress  = false;
     removeOneshotCard();
+    removeNudgeCard();
 
     // Reset the LLM conversation and clear the chat DOM.
     window.habibi.agent.newSession();

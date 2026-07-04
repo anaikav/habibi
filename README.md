@@ -30,7 +30,8 @@ live at `https://<your-username>.github.io/habibi/`.
 - **Phase 2** — LLM agent + tools + memory. ✅
 - **Phase 3** — chat UI, chips, settings, ride card. ✅
 - **Phase 4** — demo panel, one-shot card, memory screen. ✅
-- Phase 5 — L3 anticipation (surge cause, proactive nudge). *(next)*
+- **Phase 5** — grounded surge explanation, rain nudge, collision rule. ✅
+- Phase 6 — polish + refusals red-team + deploy. *(next)*
 - Phase 5 — L3 anticipation (surge cause, proactive nudge).
 - Phase 6 — polish.
 
@@ -99,6 +100,50 @@ habibi.contextApi.setSurge(false);
 The empty `linkedCauseIds` at Monday 3 PM is what will stop the assistant (in
 Phase 5) from inventing a surge reason. That's the groundedness guardrail
 that Phase 3's most-important test (`L3-2`) is checking.
+
+## Phase 5 acceptance tests (spec §9 — L3)
+
+Phase 5 is where the "system anticipates" rule earns its keep. The trigger
+logic is pure JS; the LLM only narrates or composes copy.
+
+- **L3-1 (grounded surge cause)** — Click **Sat 7:30 PM**, flip **Surge → On**.
+  Ask `why are prices high?`. Expected: the model calls `get_city_context`
+  (see the `🌆 get_city_context → surge on` chip), reads
+  `linkedCauseIds: ["evt_1", "prayer_maghrib"]` + the events + prayer times,
+  and answers citing the Coldplay concert at Etihad Park + Maghrib prayer
+  time, adding something like "should ease by ~10 PM" (from `expectedEndsBy`).
+- **L3-2 (groundedness — the most important test in the file)** — Click a
+  time with no linked cause, e.g. free-datetime input `2026-07-06T15:00`
+  (Monday 3 PM). Keep **Surge → On**. Ask `why are prices high?`.
+  Expected: model calls `get_city_context`, reads
+  `linkedCauseIds: []`, and answers something like "unusually busy right
+  now" — *no invented concert, no invented reason*. The system prompt
+  guardrail from spec §5 is what enforces this. If the model invents a
+  cause here, that's a regression.
+- **L3-3 (proactive rain nudge + collision rule)** — Reset. Flip
+  **Weather → Rain forecast**. Click **Mon 7:35 AM**. Expected: a blue
+  ☔ *"Rain ahead"* card appears above the composer with two buttons.
+  The copy is LLM-composed if your key is set, otherwise a static template.
+  Click **Schedule it** → the ride books end-to-end (Ride booked card).
+  Then click **Mon 8:30 AM** with rain still on. Expected: **exactly ONE
+  card** — the yellow one-shot with an appended blue line
+  *"☔ rain expected — consider leaving early"*. Never two cards at once.
+- **L3-4 (trigger respects memory)** — Reset. Open 🧠 Memory, delete the
+  DIFC pattern. Turn rain on. Click Mon 7:35 AM. Expected: **NO** nudge
+  card. The nudge trigger asks the miner for patterns, and the miner is
+  respecting the ignore-list.
+
+### Notes on cost + reliability
+
+- The nudge card makes ONE extra `/v1/messages` call to compose its copy —
+  the `[agent] usage:` for it is ~150–200 tokens, and it's capped at max 1
+  per session. If the composition call fails (no key, rate-limited,
+  network) the card falls back to a static template so you always see
+  something.
+- The [Fewer like this] button on the nudge sets a session flag; the flag
+  is *also* set the moment the nudge first renders (spec §6 "max 1 nudge
+  per session"), so revisiting the nudge zone after dismissing won't show
+  it again until Reset or refresh.
 
 ## Phase 4 acceptance tests (spec §9 — L2)
 
