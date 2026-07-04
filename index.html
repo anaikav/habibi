@@ -7,11 +7,22 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- Phase 0: intentionally blank shell. Real UI arrives in Phase 3. -->
+    <!-- Phase 1: still a blank page in the browser, but the mock APIs are all
+         wired up and reachable from the DevTools console under `habibi.*`.
+         Real UI arrives in Phase 3. -->
     <main class="shell">
       <h1>Habibi</h1>
       <p class="muted">Your Dubai concierge. Coming to life phase by phase.</p>
-      <p class="muted small">Open the DevTools console to poke at the mocks (see README).</p>
+      <p class="muted small">Open the DevTools console — everything is under <code>habibi.*</code>. See README for console checks.</p>
     </main>
+
+    <!-- Load order matters: mocks first, patternMiner uses history data, and
+         app.js is the top-level bootstrap. Plain scripts (no bundler). -->
+    <script src="clock.js"></script>
+    <script src="contextApi.js"></script>
+    <script src="historyApi.js"></script>
+    <script src="moiApi.js"></script>
+    <script src="patternMiner.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

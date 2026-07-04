@@ -1,1 +1,86 @@
-[]
+[
+  {
+    "id": "loc_dxb",
+    "name": "Dubai International Airport (DXB)",
+    "category": "transport",
+    "tags": ["airport", "travel"],
+    "description": "Dubai's main international airport. Terminals 1, 2, and 3."
+  },
+  {
+    "id": "loc_marina",
+    "name": "Dubai Marina",
+    "category": "neighborhood",
+    "tags": ["waterfront", "residential", "nightlife"],
+    "description": "A canal-side district lined with high-rises, cafes, and the Marina Walk promenade."
+  },
+  {
+    "id": "loc_difc",
+    "name": "DIFC Gate Village",
+    "category": "business",
+    "tags": ["office", "art", "dining"],
+    "description": "The Dubai International Financial Centre — offices by day, galleries and restaurants by night."
+  },
+  {
+    "id": "loc_mall",
+    "name": "Dubai Mall",
+    "category": "shopping",
+    "tags": ["family", "indoor", "aquarium"],
+    "description": "One of the world's largest malls, next to the Burj Khalifa and the Dubai Fountain."
+  },
+  {
+    "id": "loc_kite",
+    "name": "Kite Beach",
+    "category": "beach",
+    "tags": ["chill", "watersports", "food-trucks"],
+    "description": "A laid-back beach on Jumeirah Road, known for kitesurfing, skate ramps, and food trucks."
+  },
+  {
+    "id": "loc_burj",
+    "name": "Burj Khalifa",
+    "category": "landmark",
+    "tags": ["view", "iconic", "tourist"],
+    "description": "The tallest building in the world; observation decks on the 124th, 125th, and 148th floors."
+  },
+  {
+    "id": "loc_palm",
+    "name": "Palm Jumeirah",
+    "category": "neighborhood",
+    "tags": ["beach", "resort", "luxury"],
+    "description": "The palm-shaped artificial island lined with beach resorts and residences."
+  },
+  {
+    "id": "loc_jbr",
+    "name": "JBR Beach",
+    "category": "beach",
+    "tags": ["family", "boardwalk", "restaurants"],
+    "description": "Jumeirah Beach Residence — a busy beachfront with a walking strip called The Walk."
+  },
+  {
+    "id": "loc_global",
+    "name": "Global Village",
+    "category": "entertainment",
+    "tags": ["family", "seasonal", "food"],
+    "description": "A seasonal cultural festival park (usually October–April) with pavilions from ~90 countries."
+  },
+  {
+    "id": "loc_fahidi",
+    "name": "Al Fahidi Historical District",
+    "category": "culture",
+    "tags": ["heritage", "quiet", "coffee"],
+    "description": "Restored wind-tower houses and quiet lanes in old Bur Dubai. Museums, cafes, small galleries."
+  },
+  {
+    "id": "loc_etihad",
+    "name": "Etihad Park",
+    "category": "venue",
+    "tags": ["concerts", "events"],
+    "description": "An open-air concert and event venue on Yas Island-style waterfront in Dubai."
+  },
+  {
+    "id": "loc_ravi",
+    "name": "Ravi Restaurant",
+    "category": "restaurant",
+    "tags": ["cheap-eats", "pakistani", "late-night"],
+    "description": "A Dubai institution in Satwa — famous for late-night Pakistani cooking at kind-to-your-wallet prices."
+  }
+]
