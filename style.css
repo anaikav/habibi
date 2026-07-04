@@ -1,35 +1,287 @@
-/* style.css — visual layer.
-   Warm, minimal, phone-ish width. Real chat styles land in Phase 3. */
+/* style.css — the visual layer.
+   Warm, minimal, phone-ish width. The palette is a soft cream background with
+   a burnt-orange accent — Dubai without being Dubai-clichéd. */
 
 :root {
-  --bg: #faf7f2;
-  --ink: #201a15;
-  --muted: #6b6055;
-  --accent: #b3541e;
-  --card: #ffffff;
-  --line: #ece5da;
+  --bg:        #faf7f2;   /* page background */
+  --surface:   #ffffff;   /* cards, bubbles */
+  --ink:       #201a15;   /* main text */
+  --muted:     #6b6055;   /* secondary text */
+  --accent:    #b3541e;   /* burnt orange */
+  --accent-2:  #8a3f14;   /* deeper accent for hover */
+  --line:      #ece5da;   /* thin borders */
+  --user-ink:  #ffffff;   /* text on user bubbles */
+  --user-bg:   #201a15;   /* user bubble bg */
+  --chip-bg:   #f0eae0;   /* tool chip pill */
+  --danger:    #b32323;   /* errors */
+  --shadow-sm: 0 1px 2px rgba(32, 26, 21, 0.05);
+  --shadow-md: 0 4px 16px rgba(32, 26, 21, 0.08);
 }
 
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
+  height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
 }
 
-.shell {
-  max-width: 480px;
+/* ------- App shell: header / chat / composer stacked vertically ------- */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 560px;
   margin: 0 auto;
-  padding: 32px 20px;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
 }
 
-h1 {
-  font-size: 28px;
-  margin: 0 0 8px;
-  letter-spacing: -0.5px;
+/* ------- Top bar ------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent); color: white;
+  font-weight: 700; font-size: 15px;
+}
+.brand-name { font-weight: 600; font-size: 16px; }
+.brand-tag  { color: var(--muted); font-size: 12px; }
+
+.icon-btn {
+  background: transparent; border: none;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  font-size: 18px; cursor: pointer;
+  color: var(--ink);
+}
+.icon-btn:hover { background: var(--line); }
+
+/* ------- Chat area ------- */
+
+.chat {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px;
+  scroll-behavior: smooth;
+}
+.messages { display: flex; flex-direction: column; gap: 10px; }
+
+/* Message row — bubbles align by side, cards span more width. */
+.msg { display: flex; }
+.msg--user       { justify-content: flex-end; }
+.msg--assistant  { justify-content: flex-start; }
+.msg--center     { justify-content: center; }
+
+/* Bubbles */
+.bubble {
+  max-width: 82%;
+  padding: 9px 14px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.45;
+}
+.msg--user .bubble {
+  background: var(--user-bg);
+  color: var(--user-ink);
+  border-bottom-right-radius: 6px;
+}
+.msg--assistant .bubble {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 6px;
+  box-shadow: var(--shadow-sm);
+}
+.bubble strong { font-weight: 600; }
+.bubble em     { font-style: italic; }
+
+/* Tool chip pills */
+.chip {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--chip-bg);
+  padding: 4px 10px;
+  border-radius: 999px;
+  align-self: flex-start;
+  border: 1px solid var(--line);
 }
 
-.muted { color: var(--muted); }
-.small { font-size: 13px; }
+/* Error line (for API failures etc.) */
+.msg--error .bubble {
+  background: #fdecec;
+  color: var(--danger);
+  border-color: #f2c9c9;
+}
+
+/* ------- Cards (proposal + ride) ------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  width: 100%;
+  max-width: 82%;
+  box-shadow: var(--shadow-md);
+}
+
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.card-title  { font-weight: 600; font-size: 14px; }
+.card-badge  {
+  font-size: 11px; color: var(--muted);
+  background: var(--chip-bg); border-radius: 6px;
+  padding: 2px 6px; text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+.card-route {
+  font-size: 15px; margin: 4px 0 2px;
+}
+.card-fare {
+  font-size: 22px; font-weight: 600; color: var(--accent);
+  margin: 4px 0 12px;
+}
+.card-meta {
+  font-size: 13px; color: var(--muted); margin-top: 2px;
+}
+
+/* Proposal card variant — orange border to signal action needed */
+.card--proposal { border-color: var(--accent); }
+.card--proposal .card-title { color: var(--accent); }
+
+/* Ride card variant */
+.card--ride { border-color: var(--line); }
+.card--ride .card-title { color: var(--ink); }
+.status-line {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px;
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.status-dot.done   { background: #2f8f4d; animation: none; }
+.status-dot.cancel { background: #999; animation: none; }
+.status-text { font-size: 14px; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-weight: 600; font-size: 14px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: var(--accent-2); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-row { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ------- Composer ------- */
+
+.composer {
+  flex-shrink: 0;
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  position: sticky; bottom: 0;
+}
+.input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 10px 14px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  resize: none;
+  max-height: 140px;
+  outline: none;
+}
+.input:focus { border-color: var(--accent); background: white; }
+
+.send-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--accent); color: white;
+  border: none; font-size: 18px; font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.send-btn:hover { background: var(--accent-2); }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ------- Modal ------- */
+
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(32, 26, 21, 0.35);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  z-index: 10;
+}
+.modal.hidden { display: none; }
+
+.modal-content {
+  background: var(--surface);
+  width: 100%;
+  max-width: 400px;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.modal-head h2 { margin: 0; font-size: 18px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.field-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.field-input {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit; background: var(--bg);
+  color: var(--ink);
+}
+.field-input:focus { border-color: var(--accent); outline: none; background: white; }
+.muted { color: var(--muted); font-size: 12px; }
+
+.modal-actions {
+  display: flex; justify-content: flex-end; margin-top: 4px;
+}

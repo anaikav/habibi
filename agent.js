@@ -58,6 +58,24 @@
     _wired = true;
   }
 
+  // ----- Event bus (for app.js to render bubbles as they arrive) -------
+  //
+  // Each response can contain multiple text blocks (before tool_use blocks or
+  // as the final message). Rather than only rendering the final text, we fire
+  // an event per text block so the UI can show intermediate prose too.
+
+  const eventListeners = { assistantText: new Set() };
+  function on(name, fn) {
+    if (!eventListeners[name]) return () => {};
+    eventListeners[name].add(fn);
+    return () => eventListeners[name].delete(fn);
+  }
+  function fire(name, payload) {
+    for (const fn of eventListeners[name] || []) {
+      try { fn(payload); } catch (e) { console.error('[agent] listener threw:', e); }
+    }
+  }
+
   // ----- Public settings API -----------------------------------------
 
   function setApiKey(k) { apiKey = String(k || ''); }
@@ -161,6 +179,14 @@
       // Append the assistant's reply (may contain text + tool_use blocks).
       messages.push({ role: 'assistant', content: response.content });
 
+      // Fire an event for each text block so the UI can render intermediate
+      // prose (e.g. "let me check the fares first…") before the tool chip.
+      for (const block of response.content || []) {
+        if (block.type === 'text' && (block.text || '').trim()) {
+          fire('assistantText', block.text.trim());
+        }
+      }
+
       if (response.stop_reason !== 'tool_use') {
         const text = extractText(response.content);
         return { text, response };
@@ -207,6 +233,7 @@
     setModel, getModel,
     newSession, getMessages,
     sendUserMessage,
+    onAssistantText: (fn) => on('assistantText', fn),
     MODELS,
   };
 })();

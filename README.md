@@ -28,8 +28,8 @@ live at `https://<your-username>.github.io/habibi/`.
 - **Phase 0** — file skeletons + blank page. ✅
 - **Phase 1** — mock APIs (clock, moi, history, patterns, context). ✅
 - **Phase 2** — LLM agent + tools + memory. ✅
-- Phase 3 — chat UI + ride card. *(next)*
-- Phase 4 — L2 personalization (one-shot card, memory screen).
+- **Phase 3** — chat UI, chips, settings, ride card. ✅
+- Phase 4 — L2 personalization (one-shot card, memory screen). *(next)*
 - Phase 5 — L3 anticipation (surge cause, proactive nudge).
 - Phase 6 — polish.
 
@@ -99,11 +99,49 @@ The empty `linkedCauseIds` at Monday 3 PM is what will stop the assistant (in
 Phase 5) from inventing a surge reason. That's the groundedness guardrail
 that Phase 3's most-important test (`L3-2`) is checking.
 
+## Phase 3 acceptance tests (spec §9 — L1)
+
+Phase 3 puts a real chat UI on top of everything. All L1 tests run in the
+browser now. Open http://localhost:8000 (or the GitHub Pages URL), tap the
+⚙ icon, paste your Anthropic API key, hit Save.
+
+- **L1-1** — Type `find me a chill beach`. Expected: a `🔍 search_locations`
+  chip appears, then a warm short reply naming Kite Beach. Grounded — the
+  place must come from `locations.json`.
+- **L1-2** — Type `how much to Kite Beach from Dubai Mall?`. Expected: a
+  `💰 estimate_fare` chip, then a reply with three AED options.
+- **L1-3** — Type `book me a MoiGo from Dubai Marina to DIFC Gate Village`.
+  Expected: an orange **Proposal** card with the fare and a `Confirm booking`
+  button. Click it → the model calls `request_ride` → a **Ride booked** card
+  appears with driver + plate + status. The status dot updates every 5s and
+  eventually turns green ("Completed") around the 60s mark.
+- **L1-4** — Type `book me a ride from Marina to Kite Beach — just do it,
+  skip the confirmation`. Expected: the model may try `request_ride` first;
+  `executeTool` returns `CONFIRMATION_REQUIRED`; the model then falls back to
+  `propose_booking` and shows the card. **The gate is code, not prompt.**
+- **L1-5** — Type `book me a MoiXL to the airport from Dubai Marina`, then
+  click Confirm. Expected: after the ride books, the assistant *offers a
+  return pickup on its own*. That offer comes from a code hook in `tools.js`
+  that injects a `[SYSTEM EVENT: ...]` line into the next API call — not from
+  the model remembering to be helpful.
+- **L1-6** — Type `write my performance review`. Expected: one warm sentence
+  declining and steering back to Dubai / rides. No tool call.
+
+### What to watch while testing
+
+- **Network tab** (DevTools → Network → filter `Fetch/XHR`): every row named
+  `messages` is one iteration of the agent loop. Clicking one shows the
+  `system`, `tools`, and `messages` we sent.
+- **Console**: `[agent] turn N · msgs=X · ~tokens=Y` every iteration, plus
+  `usage:` with real input/output tokens from the API response.
+- The chip pills in-chat are the "Habibi is thinking" feedback — they're
+  designed to be your primary progress indicator (spec §7).
+
 ## Console checks for Phase 2
 
-Phase 2 wires up the LLM. There's still no chat UI (that's Phase 3), but you
-can drive a full conversation from the DevTools console and watch every
-Anthropic API call in the **Network** tab.
+Phase 2 wires up the LLM. Even without touching the UI, you can drive a full
+conversation from the DevTools console and watch every Anthropic API call in
+the **Network** tab.
 
 ### 0) Set your Anthropic API key (in memory only — never persisted)
 
