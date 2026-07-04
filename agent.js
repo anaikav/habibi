@@ -47,6 +47,12 @@
   // that tools.js has fired. Drained into the next user message.
   const pendingSystemEvents = [];
 
+  // Sim time at the end of the previous turn. If the demo panel moves the
+  // clock between turns, the next user message gets a [SIM CLOCK CHANGED]
+  // prefix so the model knows any earlier tool result is stale and must be
+  // re-fetched. Prompt alone isn't reliable — this is the code guardrail.
+  let lastSimTimeAtTurn = null;
+
   // Wire the system-event listener once — this is what turns a tools.js event
   // into a text block appended to the next user message.
   let _wired = false;
@@ -89,6 +95,7 @@
   function newSession() {
     messages = [];
     pendingSystemEvents.length = 0;
+    lastSimTimeAtTurn = null;
     if (window.habibi?.tools?.clearProposals) window.habibi.tools.clearProposals();
   }
   function getMessages() { return JSON.parse(JSON.stringify(messages)); }
@@ -223,7 +230,21 @@
     if (typeof text !== 'string' || !text.trim()) {
       throw new Error('sendUserMessage requires a non-empty string');
     }
-    messages.push({ role: 'user', content: text });
+
+    // Detect a sim-clock change between turns and tell the model. The prompt
+    // alone isn't reliable — models happily re-use a previous tool result
+    // even when the world it described has moved on. This is the code
+    // guardrail that makes L3-2 pass on both Sonnet and Haiku.
+    let prefix = '';
+    const nowIso = window.habibi.clock.getSimTime().toISOString();
+    if (lastSimTimeAtTurn && lastSimTimeAtTurn !== nowIso) {
+      const nice = fmtSimTime(new Date(nowIso));
+      prefix = '[SIM CLOCK CHANGED to ' + nice +
+        ' — any prior tool result is stale, re-call the relevant tool before answering.]\n\n';
+    }
+    lastSimTimeAtTurn = nowIso;
+
+    messages.push({ role: 'user', content: prefix + text });
     return await runAgentLoop();
   }
 
